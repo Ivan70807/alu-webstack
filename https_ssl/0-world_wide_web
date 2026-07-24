@@ -1,23 +1,30 @@
 #!/usr/bin/env bash
-# displays A record information for subdomains of a given domain
+# Displays DNS info for a domain's subdomains (www, lb-01, web-01, web-02)
+# or for a single specified subdomain.
+# Usage: ./0-world_wide_web <domain> [subdomain]
 
-check_subdomain() {
-    domain="$1"
-    sub="$2"
-    result=$(dig "$sub.$domain" | awk '/^;; ANSWER SECTION:/{getline; print $4, $5}')
-    record_type=$(echo "$result" | awk '{print $1}')
-    destination=$(echo "$result" | awk '{print $2}')
-    echo "The subdomain $sub is a $record_type record and points to $destination"
+domain=$1
+subdomain=$2
+
+# Prints DNS info for a single subdomain of $domain
+print_subdomain_info() {
+    local sub=$1
+    local record_type
+    local destination
+
+    read -r record_type destination <<< "$(dig "${sub}.${domain}" | awk '
+        /^;; ANSWER SECTION:/ { getline; print $4, $5; exit }
+    ')"
+
+    echo "The subdomain ${sub} is a ${record_type} record and points to ${destination}"
 }
 
-domain="$1"
-subdomain="$2"
-
 if [ -n "$subdomain" ]; then
-    check_subdomain "$domain" "$subdomain"
+    print_subdomain_info "$subdomain"
 else
-    check_subdomain "$domain" "www"
-    check_subdomain "$domain" "lb-01"
-    check_subdomain "$domain" "web-01"
-    check_subdomain "$domain" "web-02"
+    for sub in www lb-01 web-01 web-02; do
+        print_subdomain_info "$sub"
+    done
 fi
+
+exit 0
